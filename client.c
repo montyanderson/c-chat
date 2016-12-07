@@ -1,27 +1,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
 #include <string.h>
-#include <pthread.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
+void dieOnError(int res) {
+	if(res < 0) {
+		perror("");
+		exit(1);
+	}
+}
 
 int main(int argc, char *argv[]) {
-	struct sockaddr_in server_addr;
-	struct hostent *server;
-	char *hostname = argv[1];
-	int port = atoi(argv[2]);
+	int sock;
+	struct sockaddr_in addr;
+	ssize_t n;
 
-	server = gethostbyname(hostname);
+	dieOnError(sock = socket(AF_INET, SOCK_STREAM, 0));
 
-	if(hostname == NULL || port == 0) {
-		printf("Usage: %s [hostname] [port]\n", argv[0]);
-		return 1;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(3001);
+
+	dieOnError(connect(sock, (struct sockaddr *) &addr, sizeof(addr)));
+
+	char message[] = "Hello, World!";
+
+	send(sock, message, strlen(message), 0);
+
+	char buffer[200];
+
+	while((n = recv(sock, buffer, sizeof(buffer - 1), 0)) > 0) {
+		buffer[n] = 0;
+		printf("%s\n", buffer);
 	}
-
-	server_addr.sin_family = AF_INET;
-	inet_aton(server, &server_addr.sin_addr.s_addr);
-	bcopy((char *)server->h_addr,
-	  (char *)&server_addr.sin_addr.s_addr, server->h_length);
-	server_addr.sin_port = htons(port);
 }

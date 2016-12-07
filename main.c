@@ -11,6 +11,13 @@
 
 int clients[MAX_CLIENTS];
 
+void dieOnError(int res) {
+	if(res <= 0) {
+		perror("");
+		exit(1);
+	}
+}
+
 size_t *client_push(int fd) {
 	size_t i;
 
@@ -22,6 +29,16 @@ size_t *client_push(int fd) {
 	}
 
 	return NULL;
+}
+
+void client_remove(int fd) {
+	size_t i;
+
+	for(i = 0; i < MAX_CLIENTS; i++) {
+		if(clients[i] == fd) {
+			clients[i] = 0;
+		}
+	}
 }
 
 void broadcast(char *buffer, size_t size) {
@@ -39,13 +56,12 @@ void *connection_handler(void *arg) {
 	char *buffer = calloc(BUFFER_SIZE, 1);
 	ssize_t n;
 
-	while(1) {
-		(n = recv(fd, buffer, BUFFER_SIZE, 0));
+	while((n = recv(fd, buffer, BUFFER_SIZE, 0)) > 0) {
 		printf("buf!\n");
 		broadcast(buffer, n);
 	}
 
-	printf("no more bufs!\n");
+	client_remove(fd);
 
 	return NULL;
 }
@@ -60,14 +76,10 @@ int main() {
 	pthread_t thread;
 	int option = 1;
 
-	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	dieOnError((sockfd = socket(AF_INET, SOCK_STREAM, 0)));
 	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
 
-	if(sockfd < 0) {
-		perror("Error opening socket");
-		return 1;
-	}
-
+	memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_addr.s_addr = INADDR_ANY;
 	server_addr.sin_port = htons(port_number);
