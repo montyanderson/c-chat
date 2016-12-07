@@ -9,7 +9,7 @@ void dieOnError(int res) {
 	if(res < 0) {
 		perror("");
 		exit(1);
-	}
+	} 
 }
 
 int main(int argc, char *argv[]) {
